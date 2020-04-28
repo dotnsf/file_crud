@@ -1,0 +1,165 @@
+<html>
+<head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8"/>
+<title>File CRUD Sample</title>
+<script type="text/javascript" src="//code.jquery.com/jquery-2.2.4.min.js"></script>
+<link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"/>
+<script src="//maxcdn.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+<script>
+$(function(){
+  $.ajax({
+    type: 'GET',
+    url: './items',
+    success: function( result ){
+      if( result && result.status && result.items ){
+        result.items.forEach( function( item ){
+          var tr = "<tr id='tr_" + item._id + "'>"
+            + '<td><img src="./attachment/' + item._id + '" width="100" title="' + item._id + '"/></td>'
+            + '<td>' + item.text + '</td>'
+            + '<td>'
+            + "<button class='btn btn-xs btn-warning' onClick='updateForm(" + JSON.stringify( item ) + ")'>Edit</button>"
+            + "<button class='btn btn-xs btn-danger' onClick='deleteItem(\"" + item._id + "\")'>Delete</button>"
+            + '</td>'
+            + '</tr>';
+          $('#tbody').prepend( tr );
+        });
+      }
+    },
+    error: function( e0, e1, e2 ){
+      console.log( e1 + ' : ' + e2 );
+    }
+  });
+});
+
+function resetForm(){
+  $('#tr_edit').addClass( 'hide' );
+  $('#tr_save').removeClass( 'hide' );
+}
+
+function saveFile(){
+  var form = $('#frmSave').get()[0];
+  var formData = new FormData( form );
+  $.ajax({
+    url: './item',
+    type: 'POST',
+    dataType: 'json',
+    data: formData,
+    processData: false,
+    contentType: false,
+    success: function( result ){
+      location.href = '/';
+    },
+    error: function( e0, e1, e2 ){
+      console.log( e1 + ' : ' + e2 );
+    }
+  });
+  return false;
+}
+
+function updateFile(){
+  var id = $('#edit_id').val();
+  if( id ){
+    var form = $('#frmEdit').get()[0];
+    var formData = new FormData( form );
+    if( confirm( 'データを更新してよろしいですか？' ) ){
+      $.ajax({
+        url: './item/' + id,
+        type: 'PUT',
+        dataType: 'json',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function( result ){
+          location.href = '/';
+        },
+        error: function( e0, e1, e2 ){
+          console.log( e1 + ' : ' + e2 );
+        }
+      });
+      return false;
+    }else{
+      return false;
+    }
+  }else{
+    return false;
+  }
+}
+
+function updateForm( item ){
+  $('#tr_edit').removeClass( 'hide' );
+  $('#tr_save').addClass( 'hide' );
+
+  $('#frmEdit').prop( 'action', './item/' + item._id );
+  $('#edit_img').prop( 'src', './attachment/' + item._id );
+  $('#edit_text').val( item.text );
+  $('#edit_id').val( item._id );
+}
+
+function deleteItem( id ){
+  if( window.confirm( 'ID: ' + id + ' のファイルを削除します' ) ){
+    $.ajax({
+      type: "DELETE",
+      url: "./item/" + id,
+      success: function( data ){
+        location.href = '/';
+      },
+      error: function( jqXHR, textStatus, errorThrown ){
+        console.log( textStatus + " : " + errorThrown );
+      }
+    });
+  }
+}
+</script>
+<style>
+.hide{
+  display: none;
+}
+</style>
+</head>
+<body>
+  <!-- //navi -->
+  <nav class="navbar navbar-default navbar-fixed-top">
+    <div class="navbar-header">
+      <a class="navbar-brand" href="./admin">File CRUD</a>
+    </div>
+    <div class="collapse navbar-collapse target">
+      <ul class="nav navbar-nav navbar-right">   
+      	<li>
+        </li>
+      </ul>
+    </div>
+  </nav>
+  <!-- navi// -->
+
+  <!-- //list -->
+  <div class="container" style="padding:60px 0;">
+    <table class="table table-bordered">
+      <thead>
+        <tr style="background-color: #ffffcc;"><th>ID</th><th>Text</th><th>Action</th></tr>
+      </thead>
+      <tbody id="tbody">
+        <tr id="tr_save">
+          <form id="frmSave" method="POST" action="./item" enctype="multipart/form-data">
+          <td id="td_0"><input type="file" name="file" id="save_file"/></td>
+          <td id="td_1"><input type="text" name="text" class="form-control" id="save_text" value=""/></td>
+          <td id="td_2"><button class="btn btn-xs btn-primary" onClick="return saveFile();">Add File</button></td>
+          </form>
+        </tr>
+        <tr id="tr_edit" class="hide">
+          <form id="frmEdit" method="PUT" action="./item/" enctype="multipart/form-data">
+          <input type="hidden" name="_id" id="edit_id" value=""/>
+          <td id="td_0"><img src="./attachment/" id="edit_img" width="100" title=""/><br/><input type="file" name="file" id="edit_file"/></td>
+          <td id="td_1"><input type="text" name="text" class="form-control" id="edit_text" value=""/></td>
+          <td id="td_2">
+          <button class="btn btn-xs btn-primary" onClick="return updateFile();">Update File</button>
+          <button class="btn btn-xs btn-info" onClick="resetForm(); return false;">Reset</button>
+          </td>
+          </form>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <!-- list// -->
+</body>
+</html>
+

@@ -1,0 +1,159 @@
+swagger: '2.0'
+info:
+  description: File-CRUD API ドキュメント
+  version: 0.0.1
+  title: File-CRUD REST APIs
+host: localhost:8080
+basePath: /
+tags:
+  - name: item
+    description: API for item
+schemes:
+  - http
+  - https
+paths:
+  /item:
+    post:
+      tags:
+        - item
+      summary: 新規に作成する
+      description: 新規に作成する
+      parameters:
+        - name: file
+          type: file
+          in: formData
+          description: アップロードするファイル
+        - in: body
+          name: body
+          description: アイテム本体
+          required: true
+          schema:
+            $ref: '#/definitions/ItemRequest'
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+  /items:
+    get:
+      tags:
+        - item
+      summary: 複数情報の取得
+      description: 複数情報の取得
+      parameters:
+        - name: limit
+          type: integer
+          in: query
+          description: 取得数上限（デフォルトは上限なし）
+        - name: offset
+          type: integer
+          in: query
+          description: 取得オフセット（デフォルトは 0）
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+  /item/{id}:
+    get:
+      tags:
+        - item
+      summary: 特定の情報を取り出す
+      description: 特定の情報を取り出す
+      parameters:
+        - in: path
+          name: id
+          type: string
+          description: ID
+          required: true
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+    delete:
+      tags:
+        - item
+      summary: 特定の情報を削除する
+      description: 特定の情報を削除する
+      parameters:
+        - in: path
+          name: id
+          type: string
+          description: ID
+          required: true
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+    put:
+      tags:
+        - item
+      summary: 更新する
+      description: 更新する
+      parameters:
+        - in: path
+          name: id
+          type: string
+          description: ID
+          required: true
+        - name: file
+          type: file
+          in: formData
+          description: アップロードするファイル
+        - in: body
+          name: body
+          description: アイテム本体
+          required: true
+          schema:
+            $ref: '#/definitions/ItemRequest'
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+  /attachment/{id}:
+    get:
+      tags:
+        - item
+      summary: 添付ファイルを取り出す
+      description: 添付ファイルを取り出す
+      parameters:
+        - in: path
+          name: id
+          type: string
+          description: ID
+          required: true
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+  /download/{id}:
+    get:
+      tags:
+        - item
+      summary: 添付ファイルをダウンロードする
+      description: 添付ファイルをダウンロードする
+      parameters:
+        - in: path
+          name: id
+          type: string
+          description: ID
+          required: true
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+definitions:
+  ItemRequest:
+    type: object
+    properties:
+      name:
+        type: string
+        description: 名前
+      text:
+        type: string
+        description: テキスト
