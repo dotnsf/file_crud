@@ -8,11 +8,22 @@ var express = require( 'express' ),
     cloudantlib = require( '@cloudant/cloudant' ),
     app = express();
 var settings = require( './settings' );
-var cloudant = cloudantlib( { account: settings.cloudant_username, password: settings.cloudant_password } );
+var cloudant = null;
+if( settings.db_apikey && settings.db_url ){
+  cloudant = new cloudantlib({
+    url: settings.db_url,
+    plugins: {
+      iamauth: {
+        iamApikey: settings.db_apikey
+      }
+    }
+  });
+}else if( settings.db_username && settings.db_password ){
+  cloudant = cloudantlib( { account: settings.cloudant_username, password: settings.cloudant_password } );
+}
 
 var db = null;
-var db_url = 'https://' + settings.cloudant_username + '.cloudant.com/dashboard.html';
-var cloudant = cloudantlib( { account: settings.cloudant_username, password: settings.cloudant_password } );
+var db_url = ( settings.db_url ? settings.db_url : 'https://' + settings.cloudant_username + '.cloudant.com/database/' + settings.cloudant_dbname + '/_all_docs' );
 if( cloudant ){
   cloudant.db.get( settings.cloudant_dbname, function( err, body ){
     if( err ){
@@ -23,57 +34,18 @@ if( cloudant ){
           }else{
             db = cloudant.db.use( settings.cloudant_dbname );
 
-            //. query index
-            var query_index_owner = {
-              _id: "_design/library",
-              language: "query",
-              indexes: {
-                "user_id-index": {
-                  index: {
-                    fields: [ { name: "user_id", type: "string" } ]
-                  },
-                  type: "text"
-                }
-              }
-            };
-            db.insert( query_index_owner, function( err, body ){} );
+            InsertIndex();
           }
         });
       }else{
         db = cloudant.db.use( settings.cloudant_dbname );
 
-        //. query index
-        var query_index_owner = {
-          _id: "_design/library",
-          language: "query",
-          indexes: {
-            "user_id-index": {
-              index: {
-                fields: [ { name: "user_id", type: "string" } ]
-              },
-              type: "text"
-            }
-          }
-        };
-        db.insert( query_index_owner, function( err, body ){} );
+        InsertIndex();
       }
     }else{
       db = cloudant.db.use( settings.cloudant_dbname );
 
-      //. query index
-      var query_index_owner = {
-        _id: "_design/library",
-        language: "query",
-        indexes: {
-          "user_id-index": {
-            index: {
-              fields: [ { name: "user_id", type: "string" } ]
-            },
-            type: "text"
-          }
-        }
-      };
-      db.insert( query_index_owner, function( err, body ){} );
+      InsertIndex();
     }
   });
 }
@@ -388,6 +360,27 @@ function timestamp2datetime( ts ){
     + ' ' + ( hh < 10 ? '0' : '' ) + hh + ':' + ( nn < 10 ? '0' : '' ) + nn + ':' + ( ss < 10 ? '0' : '' ) + ss;
   return datetime;
 }
+
+function InsertIndex(){
+  if( db ){
+    //. query index
+    var query_index_owner = {
+      _id: "_design/library",
+      language: "query",
+      indexes: {
+        "user_id-index": {
+          index: {
+            fields: [ { name: "user_id", type: "string" } ]
+          },
+          type: "text"
+        }
+      }
+    };
+    db.insert( query_index_owner, function( err, body ){} );
+
+  }
+}
+
 
 var port = process.env.port || 8080;
 app.listen( port );
