@@ -18,7 +18,7 @@ if( settings.db_apikey && settings.db_url ){
       }
     }
   });
-}else if( settings.db_username && settings.db_password ){
+}else if( settings.cloudant_username && settings.cloudant_password ){
   cloudant = cloudantlib( { account: settings.cloudant_username, password: settings.cloudant_password } );
 }
 
@@ -34,18 +34,18 @@ if( cloudant ){
           }else{
             db = cloudant.db.use( settings.cloudant_dbname );
 
-            InsertIndex();
+            insertIndex();
           }
         });
       }else{
         db = cloudant.db.use( settings.cloudant_dbname );
 
-        InsertIndex();
+        insertIndex();
       }
     }else{
       db = cloudant.db.use( settings.cloudant_dbname );
 
-      InsertIndex();
+      insertIndex();
     }
   });
 }
@@ -347,6 +347,34 @@ app.delete( '/item/:id', function( req, res ){
   }
 });
 
+app.get( '/search/:q', function( req, res ){
+  res.contentType( 'application/json; charset=utf-8' );
+
+  if( db ){
+    var q = req.params.q;
+    if( q ){
+      db.search( 'library', 'text_search', { q: q }, function( err, result ){
+        if( err ){
+          res.status( 400 );
+          res.write( JSON.stringify( { status: false, error: err } ) );
+          res.end();
+        }else{
+          res.write( JSON.stringify( { status: true, results: result.rows } ) );
+          res.end();
+        }
+      });
+    }else{
+      res.status( 400 );
+      res.write( JSON.stringify( { status: false, error: 'parameter q required.' } ) );
+      res.end();
+    }
+  }else{
+    res.status( 400 );
+    res.write( JSON.stringify( { status: false, error: 'db not initialized.' } ) );
+    res.end();
+  }
+});
+
 
 function timestamp2datetime( ts ){
   var dt = new Date( ts );
@@ -361,23 +389,35 @@ function timestamp2datetime( ts ){
   return datetime;
 }
 
-function InsertIndex(){
+function insertIndex(){
   if( db ){
     //. query index
     var query_index_owner = {
       _id: "_design/library",
       language: "query",
+      views: {
+        //bytimestamp: {
+        //  map: "function( doc ){ if( doc.updated ){ emit( doc.updated, doc ); } }"
+        //}
+      },
       indexes: {
         "user_id-index": {
           index: {
             fields: [ { name: "user_id", type: "string" } ]
           },
           type: "text"
+        },
+        "text_search": {
+          analyzer: "japanese",
+          index: function( doc ){ this.index( "default", doc.text ); } 
         }
       }
     };
-    db.insert( query_index_owner, function( err, body ){} );
-
+    db.insert( query_index_owner, function( err, body ){
+      if( err ){
+        console.log( JSON.stringify( err, null, 2 ) );
+      }
+    });
   }
 }
 
