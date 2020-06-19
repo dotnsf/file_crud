@@ -109,6 +109,7 @@ app.post( '/item', function( req, res ){
       var bin = fs.readFileSync( filepath );
       var bin64 = new Buffer( bin ).toString( 'base64' );
         
+      params.file_content_type = filetype;
       params['_attachments'] = {
         file: {
           content_type: filetype,
@@ -210,15 +211,26 @@ app.get( '/attachment/:id', function( req, res ){
   if( db ){
     var id = req.params.id;
     if( id ){
-      db.attachment.get( id, "file", function( err, body ){
+      db.get( id, { include_docs: true }, function( err, item, header ){
         if( err ){
-          res.contentType( 'application/json; charset=utf-8' );
           res.status( 400 );
           res.write( JSON.stringify( { status: false, error: err } ) );
           res.end();
         }else{
-          //res.contentType( 'image/png' );
-          res.end( body, 'binary' );
+          var file_content_type = item.file_content_type;
+          db.attachment.get( id, "file", function( err, body ){
+            if( err ){
+              res.contentType( 'application/json; charset=utf-8' );
+              res.status( 400 );
+              res.write( JSON.stringify( { status: false, error: err } ) );
+              res.end();
+            }else{
+              if( file_content_type ){
+                res.contentType( file_content_type );
+              }
+              res.end( body, 'binary' );
+            }
+          });
         }
       });
     }else{
@@ -290,6 +302,7 @@ app.put( '/item/:id', function( req, res ){
             var bin = fs.readFileSync( filepath );
             var bin64 = new Buffer( bin ).toString( 'base64' );
             
+            item.file_content_type = filetype;
             item['_attachments'] = {
               file: {
                 content_type: filetype,
