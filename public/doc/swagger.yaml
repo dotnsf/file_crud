@@ -147,6 +147,23 @@ paths:
           description: 成功
         '400':
           description: エラー
+  /search/{q}:
+    get:
+      tags:
+        - item
+      summary: 検索
+      description: キーワードに合致するアイテムを検索する
+      parameters:
+        - in: path
+          name: q
+          type: string
+          description: 検索文字列
+          required: true
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
 definitions:
   ItemRequest:
     type: object

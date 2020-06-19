@@ -408,14 +408,14 @@ function insertIndex(){
           type: "text"
         },
         "text_search": {
-          analyzer: "japanese",
-          index: function( doc ){ this.index( "default", doc.text ); } 
+          analyzer: { name: "japanese" },
+          index: function( doc ){ if( doc.text ){ index( "default", doc.text ); } } 
         }
       }
     };
     db.insert( query_index_owner, function( err, body ){
       if( err ){
-        console.log( JSON.stringify( err, null, 2 ) );
+        //console.log( JSON.stringify( err, null, 2 ) );
       }
     });
   }
