@@ -78,10 +78,12 @@ app.post( '/item', function( req, res ){
     if( req.file && req.file.path ){
       var filepath = req.file.path;
       var filetype = req.file.mimetype;
+      var fileoriginalname = req.file.originalname;
       var bin = fs.readFileSync( filepath );
       var bin64 = new Buffer( bin ).toString( 'base64' );
         
       params.file_content_type = filetype;
+      params.filename = fileoriginalname;
       params['_attachments'] = {
         file: {
           content_type: filetype,
@@ -223,15 +225,25 @@ app.get( '/download/:id', function( req, res ){
   if( db ){
     var id = req.params.id;
     if( id ){
-      db.attachment.get( id, "file", function( err, body ){
+      db.get( id, { include_docs: true }, function( err, item, header ){
         if( err ){
-          res.contentType( 'application/json; charset=utf-8' );
           res.status( 400 );
           res.write( JSON.stringify( { status: false, error: err } ) );
           res.end();
         }else{
-          res.contentType( 'application/force-download' );
-          res.end( body, 'binary' );
+          db.attachment.get( id, "file", function( err, body ){
+            if( err ){
+              res.contentType( 'application/json; charset=utf-8' );
+              res.status( 400 );
+              res.write( JSON.stringify( { status: false, error: err } ) );
+              res.end();
+            }else{
+              //res.contentType( 'application/force-download' );
+              res.contentType( 'application/force-octet-stream' );
+              res.setHeader( 'Content-Disposition', 'attachment; filename="' + item.filename + '"' );
+              res.end( body, 'binary' );
+            }
+          });
         }
       });
     }else{
@@ -267,14 +279,18 @@ app.put( '/item/:id', function( req, res ){
 
           var ts = ( new Date() ).getTime();
           item.updated = ts;
+          //delete item['file_content_type'];
+          //delete item['filename'];
 
           if( req.file && req.file.path ){
             var filepath = req.file.path;
             var filetype = req.file.mimetype;
+            var fileoriginalname = req.file.originalname;
             var bin = fs.readFileSync( filepath );
             var bin64 = new Buffer( bin ).toString( 'base64' );
             
             item.file_content_type = filetype;
+            item.filename = fileoriginalname;
             item['_attachments'] = {
               file: {
                 content_type: filetype,
@@ -347,19 +363,67 @@ app.delete( '/item/:id', function( req, res ){
   }
 });
 
-app.get( '/search/:q', function( req, res ){
+app.post( '/search', function( req, res ){
   res.contentType( 'application/json; charset=utf-8' );
 
   if( db ){
-    var q = req.params.q;
+    var q = req.body.q;
     if( q ){
-      db.search( 'library', 'text_search', { q: q }, function( err, result ){
+      db.search( 'library', 'textSearch', { q: q, include_docs: true }, function( err, result ){
         if( err ){
           res.status( 400 );
           res.write( JSON.stringify( { status: false, error: err } ) );
           res.end();
         }else{
           res.write( JSON.stringify( { status: true, results: result.rows } ) );
+          res.end();
+        }
+      });
+    }else{
+      res.status( 400 );
+      res.write( JSON.stringify( { status: false, error: 'parameter q required.' } ) );
+      res.end();
+    }
+  }else{
+    res.status( 400 );
+    res.write( JSON.stringify( { status: false, error: 'db not initialized.' } ) );
+    res.end();
+  }
+});
+
+app.get( '/search/:q', function( req, res ){
+  res.contentType( 'application/json; charset=utf-8' );
+
+  if( db ){
+    var q = req.params.q;
+    if( q ){
+      /*
+      db.search( 'library', 'textSearch', { q: q, include_docs: true }, function( err, result ){
+        if( err ){
+          res.status( 400 );
+          res.write( JSON.stringify( { status: false, error: err } ) );
+          res.end();
+        }else{
+          res.write( JSON.stringify( { status: true, results: result.rows } ) );
+          res.end();
+        }
+      });
+      */
+      var query = {
+        selector: {
+          "$text": q
+        },
+        fields: [ "_id", "_rev", "text", "updated" ],
+        use_index: "_design/search",
+        sort: [ { "updated:number": "asc" } ]
+      };
+      db.find( query, function( err, result ){
+        if( err ){
+          res.status( 400 );
+          res.write( JSON.stringify( { status: false, error: err } ) );
+          res.end();
+        }else{
+          res.write( JSON.stringify( { status: true, results: result.docs } ) );
           res.end();
         }
       });
@@ -407,9 +471,9 @@ function insertIndex(){
           },
           type: "text"
         },
-        "text_search": {
-          analyzer: { name: "japanese" },
-          index: function( doc ){ if( doc.text ){ index( "default", doc.text ); } } 
+        "textSearch": {
+          analyzer: "japanese", //{ name: "japanese" },
+          index: function( doc ){ if( doc.text ){ index( "default", [doc.text].join( ' ' ) ); } } 
         }
       }
     };
@@ -418,6 +482,30 @@ function insertIndex(){
         //console.log( JSON.stringify( err, null, 2 ) );
       }
     });
+
+    //. https://qiita.com/MahoTakara/items/80392aafba8600877314 を試してみる！
+    var fulltext_search_index = {
+      _id: "_design/search",
+      type: "text",
+      name: "index-fulltext",
+      ddoc: "index-text",
+      index: {
+        fields: [
+          { name: "text", type: "string" },
+          { name: "updated", type: "number" }
+        ],
+        default_field: {
+          enabled: true,
+          analyzer: 'cjk'
+        }
+      }
+    };
+    db.insert( fulltext_search_index, function( err, body ){
+      if( err ){
+        //console.log( JSON.stringify( err, null, 2 ) );
+      }
+    });
+
   }
 }
 

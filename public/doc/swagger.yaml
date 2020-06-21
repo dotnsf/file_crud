@@ -164,6 +164,24 @@ paths:
           description: 成功
         '400':
           description: エラー
+  /search:
+    post:
+      tags:
+        - item
+      summary: 検索
+      description: キーワードに合致するアイテムを検索する
+      parameters:
+        - in: body
+          name: body
+          description: 検索文字列
+          required: true
+          schema:
+            $ref: '#/definitions/SearchRequest'
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
 definitions:
   ItemRequest:
     type: object
@@ -172,5 +190,11 @@ definitions:
         type: string
         description: 名前
       text:
+        type: string
+        description: テキスト
+  SearchRequest:
+    type: object
+    properties:
+      q:
         type: string
         description: テキスト
